@@ -1,6 +1,5 @@
 const mongoose = require("mongoose");
-const Schema = mongoose.Schema;
-const UserSchema = new Schema({
+const DriverSchema = new mongoose.Schema({
   email: {
     type: String,
     lowercase: true,
@@ -21,8 +20,8 @@ const UserSchema = new Schema({
   },
 });
 
-UserSchema.statics.findByEmail = async function (email: string) {
+DriverSchema.statics.findByEmail = async function (email: string) {
   return this.findOne({ email });
 };
 
-module.exports = mongoose.model("user", UserSchema);
+export default mongoose.model("driver", DriverSchema);
