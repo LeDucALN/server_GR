@@ -27,7 +27,7 @@ const AuthController = {
 					const accessToken = AuthController.accessToken(guest, "guest");
 					const { password, ...rest } = guest.toObject();
 					const message = "login success";
-					return res.status(200).json({ rest, accessToken, message });
+					return res.status(200).json({ ...rest, accessToken, message });
 				}
 			}
 		} catch (err) {
