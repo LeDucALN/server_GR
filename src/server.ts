@@ -25,13 +25,13 @@ app.use(cookieParser());
 route(app);
 initDb();
 
-io.use((socket: any, next) => {
+io.use((socket, next) => {
   const token = socket.handshake.auth.token;
   console.log('token', token)
   if (token) {
     jwt.verify(token, process.env.ACCESS_TOKEN_SECRET as string, (err: any, decoded: any) => {
       if (err) return next(new Error('Authentication error'));
-      socket.user = decoded;
+      socket.data.user = decoded;
       next();
     });
   } else {
