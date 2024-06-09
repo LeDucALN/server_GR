@@ -1,5 +1,5 @@
 import { Response, Request } from "express";
-import GuestSchema from "../models/guest";
+import GuestSchema from "../models/user";
 import DriverSchema from "../models/driver";
 const jwt = require('jsonwebtoken');
 
@@ -17,7 +17,6 @@ const middlewareToken = {
                     return res.status(403).json("Token is not valid!");
                 }
                 req.user = user;
-                console.log(user);    
                 next();
             });
         }

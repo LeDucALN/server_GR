@@ -4,7 +4,7 @@ import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { Document } from "mongoose";
-import GuestSchema from "../models/guest";
+import GuestSchema from "../models/user";
 import DriverSchema from "../models/driver";
 
 

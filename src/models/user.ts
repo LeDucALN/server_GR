@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const GuestSchema = new mongoose.Schema({
+const UserSchema = new mongoose.Schema({
   email: {
     type: String,
     lowercase: true,
@@ -14,14 +14,19 @@ const GuestSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  phone: {
+  phoneNumber: {
     type: String,
     require: true,
   },
+  paymentMethod: {
+    type: String,
+    require: true,
+    default: "Tiền mặt",
+  }
 }, { timestamps: true });
 
-GuestSchema.statics.findByEmail = async function (email: string) {
+UserSchema.statics.findByEmail = async function (email: string) {
   return this.findOne({ email });
 };
 
-export default mongoose.model("user", GuestSchema);
+export default mongoose.model("user", UserSchema);

@@ -10,13 +10,18 @@ const DriverSchema = new mongoose.Schema({
     minLength: 8,
     required: true,
   },
+  image: {
+    type: String,
+  },
   username: {
     type: String,
     required: true,
   },
-  phone: {
+  telephone: {
     type: String,
-    require: true,
+  },
+  license: {
+    type: String,
   },
 });
 

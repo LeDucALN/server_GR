@@ -3,14 +3,18 @@
 import { Request, Response } from "express";
 import DriverSchema from "../models/driver";
 
+interface RequestWithUser extends Request {
+	user: any;
+}
 
 const DriverController = {
-	async getInfo(req: Request, res: Response) {
-		const { id } = req.params;
-		const driver = await DriverSchema.findById(id);
-		const { password, ...info } = driver.toObject();
+	async getInfoMe(req: RequestWithUser, res: Response) {
+		const id = req.user.id;
+		const guest = await DriverSchema.findById(id);
+		const { password, ...info } = guest.toObject();
 		res.status(200).json(info);
 	},
+
 
 	async updateInfo(req: Request, res: Response) {
 		const { id } = req.params;
