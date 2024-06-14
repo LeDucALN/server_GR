@@ -9,7 +9,7 @@ import DriverSchema from "../models/driver";
 
 
 const AuthController = {
-	async guestSignin(req: Request, res: Response) {
+	async userSignin(req: Request, res: Response) {
 		try {
 			const { email, password } = req.body;
 			const guest = await GuestSchema.findByEmail(email);

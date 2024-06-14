@@ -4,7 +4,7 @@ import { Server } from "socket.io";
 import { socketAuth } from "../middleware/socketAuth";
 import { calculate } from "../utils";
 import DriverSchema from "../models/driver";
-import GuestSchema from "../models/user";
+import UserSchema from "../models/user";
 import TripSchema from "../models/trip";
 
 const io = new Server({
@@ -16,12 +16,25 @@ const io = new Server({
 io.use(socketAuth);
 
 interface Driver {
-	id: string;
+	socketId: string;
 	driverId: string;
 	isReady: boolean;
 	isTrip: boolean;
 	latitude: number;
 	longitude: number;
+	currentTripRoom: string;
+}
+
+interface ILocation {
+	latitude: number;
+	longitude: number;
+}
+
+interface SendRQ {
+	pickup: ILocation;
+	destination: ILocation;
+	PU: string;
+	DS: string;
 }
 
 let driversConnected = [] as any;
@@ -31,86 +44,97 @@ const findDriverById = async (id: string) => {
 	return driver;
 };
 
-const findGuestById = async (id: string) => {
-	const guest = await GuestSchema.findById(id);
-	return guest;
+const findUSerById = async (id: string) => {
+	const user = await UserSchema.findById(id);
+	return user;
 };
 
 io.on("connection", (socket) => {
 	console.log("driver conneccted", driversConnected);
 
-	//socket with role driver
-	if (socket.data.user.role === "driver") {
-		driversConnected.push({
-			id: socket.id,
-			driverId: socket.data.user.id,
-			isReady: false,
-		});
+	//fresh socket
+	let driver = driversConnected.find(
+		(driver: Driver) => driver.driverId === socket.data.user.id
+	);
+	if (driver) {
+		driver.id = socket.id;
+		console.log("driver id updated", driversConnected);
+	} else {
+		if (socket.data.user.role === "driver") {
+			driversConnected.push({
+				socketId: socket.id,
+				driverId: socket.data.user.id,
+				isReady: false,
+				latitude: null,
+				longitude: null,
+			});
+		}
+		driver = driversConnected.find(
+			(driver: Driver) => driver.driverId === socket.data.user.id
+		);
 	}
 
-	socket.on("sendCurrentLocation", (location: any) => {
-		driversConnected.forEach((driver: any) => {
-			if (driver.id === socket.id) {
-				driver.latitude = location.latitude;
-				driver.longitude = location.longitude;
+	//socket with role driver
 
-				if (driver.currentTripRoom) {
-					socket
-						.to(driver.currentTripRoom)
-						.emit("driverCurrentLocation", location); //gui vi tri hien tai cua tai xe toi khach hang
-				}
-			}
-		});
+	//1. Driver send current location
+	socket.on("sendCurrentLocation", (location: ILocation) => {
+		//Update current location of driver when driver move
+		driver.latitude = location.latitude;
+		driver.longitude = location.longitude;
+
+		//Send driver's current location to user when driver is on trip
+		if (driver.currentTripRoom) {
+			socket
+				.to(driver.currentTripRoom) //send to trip room of user and driver
+				.emit("driverCurrentLocation", location); // emit driver's current location
+		}
 	});
 
-	socket.on("isReady", () => {
-		console.log(`Driver ${socket.data.user.id} is ready`);
-		driversConnected.forEach((driver: any) => {
-			if (driver.id === socket.id) {
-				driver.isReady = true;
-			}
-		});
+	//2. Driver is ready to take trip
+	socket.on("isReadyForFindTrip", () => {
+		console.log(`Driver ${socket.data.user.id} is ready to find trip`);
+		driver.isReady = true;
 	});
 
-	socket.on("isNotReady", () => {
-		console.log(`Driver ${socket.data.user.id} is not ready`);
-		driversConnected.forEach((driver: any) => {
-			if (driver.id === socket.id) {
-				driver.isReady = false;
-			}
-		});
+	//3. Driver is not ready to take trip
+	socket.on("isNotReadyForFindTrip", () => {
+		console.log(`Driver ${socket.data.user.id} is not ready to find trip`);
+		driver.isReady = false;
 	});
 
 	//socket with role user
-	socket.on("sendRQ", (pickup, destination, PU, DS) => {
-		console.log("pickUpLocation:", pickup);
-		console.log("destinationLocation:", destination);
 
+	//1. User send request trip
+	socket.on("sendRQ", ( pickup, destination, PU, DS )  => {
+		console.log("sendRQ", pickup, destination, PU, DS);
 		// Tìm tài xế gần nhất trong 10 giây
-		let closestDriver = null as any;
+		let driverConnect: Driver;
 		let minDistance = Infinity;
 
+		//Find driver with min distance
 		const searchDriver = async () => {
 			driversConnected.forEach((driver: Driver) => {
+				//Check driver is ready
 				if (driver.isReady) {
 					const distance = calculate(pickup, {
 						latitude: driver.latitude,
 						longitude: driver.longitude,
 					});
+					//Update min distance and driver connect
 					if (distance < minDistance) {
 						minDistance = distance;
-						closestDriver = driver;
+						driverConnect = driver;
 					}
 				}
 			});
 
-			if (closestDriver !== null) {
-				const tripRoom = `trip_${socket.data.user.id}_${closestDriver.driverId}`;
-				closestDriver.currentTripRoom = tripRoom;
-				closestDriver.isTrip = true;
+			if (driverConnect) {   //if driver connect is found
+				const tripRoom = `trip_${socket.data.user.id}_${driverConnect.driverId}`;   //create trip room
+				driverConnect.currentTripRoom = tripRoom;									//update current trip room of driver
+				driverConnect.isTrip = true;												//update driver is on trip	
 				socket.join(tripRoom);
-				io.to(closestDriver.id).emit("newTripRequest", {
-					guest: await findGuestById(socket.data.user.id),
+				io.to(driverConnect.socketId).emit("newTripRequest", {
+					guest: await findUSerById(socket.data.user.id),
 					pickup: pickup,
 					destination: destination,
 					tripRoom: tripRoom,
@@ -119,12 +143,12 @@ io.on("connection", (socket) => {
 				});
 				io.to(socket.id).emit(
 					"tripRequestSuccess",
-					await findDriverById(closestDriver.driverId),
-                    {
-                        latitude: closestDriver.latitude,
-                        longitude: closestDriver.longitude,
-                    }
-
+					await findDriverById(driverConnect.driverId),
+					{
+						latitude: driverConnect.latitude,
+						longitude: driverConnect.longitude,
+					},
+					tripRoom
 				);
 				clearInterval(searchInterval);
 				clearTimeout(searchTimeout);
@@ -132,10 +156,9 @@ io.on("connection", (socket) => {
 		};
 
 		const searchInterval = setInterval(searchDriver, 1000);
-
 		const searchTimeout = setTimeout(() => {
 			clearInterval(searchInterval);
-			if (closestDriver === null) {
+			if (!driverConnect) {
 				io.to(socket.id).emit("noDriversAvailable", {
 					message:
 						"Xin lỗi, tất cả các tài xế đều bận. Vui lòng thử lại sau.",
@@ -144,13 +167,12 @@ io.on("connection", (socket) => {
 		}, 10000);
 	});
 
-
-    socket.on("startTrip", (tripRoom, driverLocation) => {
-        socket.to(tripRoom).emit("driverArrived", {
-            message: "Tài xế đã đến nơi",
-            driverLocation: driverLocation,
-        })
-    });
+	socket.on("startTrip", (tripRoom, driverLocation) => {
+		socket.to(tripRoom).emit("driverArrived", {
+			message: "Tài xế đã đến nơi",
+			driverLocation: driverLocation,
+		});
+	});
 
 	socket.on("disconnect", () => {
 		console.log("disconnect to driver socket");
