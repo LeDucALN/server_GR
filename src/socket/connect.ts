@@ -6,6 +6,7 @@ import { calculate } from "../utils";
 import DriverSchema from "../models/driver";
 import UserSchema from "../models/user";
 import TripSchema from "../models/trip";
+import { clear } from "console";
 
 const io = new Server({
 	cors: {
@@ -52,13 +53,11 @@ const findUSerById = async (id: string) => {
 io.on("connection", (socket) => {
 	console.log("driver conneccted", driversConnected);
 
-	//fresh socket
 	let driver = driversConnected.find(
 		(driver: Driver) => driver.driverId === socket.data.user.id
 	);
 	if (driver) {
-		driver.id = socket.id;
-		console.log("driver id updated", driversConnected);
+		driver.socketId = socket.id;
 	} else {
 		if (socket.data.user.role === "driver") {
 			driversConnected.push({
@@ -105,8 +104,7 @@ io.on("connection", (socket) => {
 	//socket with role user
 
 	//1. User send request trip
-	socket.on("sendRQ", ( pickup, destination, PU, DS )  => {
-		console.log("sendRQ", pickup, destination, PU, DS);
+	socket.on("sendRQ", (pickup, destination, PU, DS) => {
 		// Tìm tài xế gần nhất trong 10 giây
 		let driverConnect: Driver;
 		let minDistance = Infinity;
@@ -128,18 +126,22 @@ io.on("connection", (socket) => {
 				}
 			});
 
-			if (driverConnect) {   //if driver connect is found
-				const tripRoom = `trip_${socket.data.user.id}_${driverConnect.driverId}`;   //create trip room
-				driverConnect.currentTripRoom = tripRoom;									//update current trip room of driver
-				driverConnect.isTrip = true;												//update driver is on trip	
+			if (driverConnect) {
+				//if driver connect is found
+				const tripRoom = `trip_${socket.data.user.id}_${driverConnect.driverId}`; //create trip room
+				driverConnect.currentTripRoom = tripRoom; //update current trip room of driver
+				driverConnect.isTrip = true; //update driver is on trip
 				socket.join(tripRoom);
+				io.sockets.sockets.get(driverConnect.socketId)?.join(tripRoom);
 				io.to(driverConnect.socketId).emit("newTripRequest", {
-					guest: await findUSerById(socket.data.user.id),
-					pickup: pickup,
-					destination: destination,
+					information: {
+						username: await findUSerById(socket.data.user.id),
+						pickupAddress: PU,
+						destinationAddress: DS,
+					},
+					PULocation: pickup,
+					DSLocation: destination,
 					tripRoom: tripRoom,
-					PU: PU,
-					DS: DS,
 				});
 				io.to(socket.id).emit(
 					"tripRequestSuccess",
@@ -174,6 +176,13 @@ io.on("connection", (socket) => {
 		});
 	});
 
+	socket.on("sendMessageUser", (tripRoom) => {
+		console.log(tripRoom);
+		socket.to(tripRoom).emit("receiveMessage", {
+			message: "Sr tài xế đang bận, vui lòng chờ",
+		});
+	});
+
 	socket.on("disconnect", () => {
 		console.log("disconnect to driver socket");
 		if (socket.data.user.role === "driver") {
@@ -185,3 +194,5 @@ io.on("connection", (socket) => {
 });
 
 export default io;
+
+//socket.to (send to room ngoai tru socket hien tai)
