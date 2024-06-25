@@ -85,7 +85,7 @@ io.on("connection", (socket) => {
 		if (driver.currentTripRoom) {
 			socket
 				.to(driver.currentTripRoom) //send to trip room of user and driver
-				.emit("driverCurrentLocation", location); // emit driver's current location
+				.emit("updateDriverPosition", location); // emit driver's current location
 		}
 	});
 
@@ -104,7 +104,7 @@ io.on("connection", (socket) => {
 	//socket with role user
 
 	//1. User send request trip
-	socket.on("sendRQ", (pickup, destination, PU, DS) => {
+	socket.on("sendRequestTrip", (pickup, destination, PU, DS) => {
 		// Tìm tài xế gần nhất trong 10 giây
 		let driverConnect: Driver;
 		let minDistance = Infinity;
@@ -144,7 +144,7 @@ io.on("connection", (socket) => {
 					tripRoom: tripRoom,
 				});
 				io.to(socket.id).emit(
-					"tripRequestSuccess",
+					"requestSuccess",
 					await findDriverById(driverConnect.driverId),
 					{
 						latitude: driverConnect.latitude,
@@ -161,12 +161,12 @@ io.on("connection", (socket) => {
 		const searchTimeout = setTimeout(() => {
 			clearInterval(searchInterval);
 			if (!driverConnect) {
-				io.to(socket.id).emit("noDriversAvailable", {
+				io.to(socket.id).emit("requestFail", {
 					message:
 						"Xin lỗi, tất cả các tài xế đều bận. Vui lòng thử lại sau.",
 				});
 			}
-		}, 10000);
+		}, 5000);
 	});
 
 	socket.on("startTrip", (tripRoom, driverLocation) => {
