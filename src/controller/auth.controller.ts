@@ -4,7 +4,7 @@ import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { Document } from "mongoose";
-import GuestSchema from "../models/user";
+import UserSchema from "../models/user";
 import DriverSchema from "../models/driver";
 
 
@@ -12,20 +12,20 @@ const AuthController = {
 	async userSignin(req: Request, res: Response) {
 		try {
 			const { email, password } = req.body;
-			const guest = await GuestSchema.findByEmail(email);
-			if (!guest) {
+			const user = await UserSchema.findByEmail(email);
+			if (!user) {
 				return res.status(400).json({ message: "User not found" });
 			}
 			else {
-				const validPassword = await bcrypt.compare(password, guest.password);
+				const validPassword = await bcrypt.compare(password, user.password);
 				if (!validPassword) {
 					return res
 						.status(400)
 						.json({ message: "Invalid password" });
 				}
 				else {
-					const accessToken = AuthController.accessToken(guest, "guest");
-					const { password, ...rest } = guest.toObject();
+					const accessToken = AuthController.accessToken(user, "user");
+					const { password, ...rest } = user.toObject();
 					const message = "login success";
 					return res.status(200).json({ ...rest, accessToken, message });
 				}
@@ -35,10 +35,10 @@ const AuthController = {
 		}
 	},
 
-	async guestSignup(req: Request, res: Response) {
+	async UserSignup(req: Request, res: Response) {
 		try {
 			const { username, email, password } = req.body;
-			const user = await GuestSchema.findByEmail(email);
+			const user = await UserSchema.findByEmail(email);
 			if (user) {
 				return res
 					.status(409)
@@ -47,12 +47,12 @@ const AuthController = {
 			}
 			const salt = await bcrypt.genSalt(10);
 			const hashedPassword = await bcrypt.hash(password, salt);
-			const newGuest = await GuestSchema.create({
+			const newUser = await UserSchema.create({
 				username: username,
 				email: email,
 				password: hashedPassword,
 			});
-			const { password: string, ...rest } = newGuest.toObject();
+			const { password: string, ...rest } = newUser.toObject();
 			const message = "Signup success";
 			return res.status(200).json({ rest, message });
 		} catch (err) {

@@ -10,8 +10,8 @@ interface RequestWithUser extends Request {
 const DriverController = {
 	async getInfoMe(req: RequestWithUser, res: Response) {
 		const id = req.user.id;
-		const guest = await DriverSchema.findById(id);
-		const { password, ...info } = guest.toObject();
+		const user = await DriverSchema.findById(id);
+		const { password, ...info } = user.toObject();
 		res.status(200).json(info);
 	},
 

@@ -3,36 +3,34 @@
 const mongoose = require("mongoose");
 const TripSchema = new mongoose.Schema(
 	{
-		nameDriver: {
+		userId: {
 			type: String,
 		},
-		nameGuest: {
+		driverId: {
 			type: String,
 		},
-		pickupLocation: {
-			type: String,
+		PU: {
+			type: Object,
 		},
-		destinationLocation: {
-			type: String,
-		},
-		status: {
-			type: Boolean,
-		},
-        driverId: {
-            type: String,
+        DS: {
+            type: Object,
         },
-        guestId: {
+		driverPosition: {
+			type: Object,
+		},
+        status: {
             type: String,
+			default: "pending",
         },
-        price: {
-            type: Number,
+        tripRoom: {
+            type: String,
         },
         distance: {
             type: Number,
         },
-        duration: {
-            type: Number,
-        },
+		isArrived: {
+			type: Boolean,
+		}
 	},
 	{ timestamps: true }
 );

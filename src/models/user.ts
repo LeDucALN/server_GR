@@ -22,7 +22,14 @@ const UserSchema = new mongoose.Schema({
     type: String,
     require: true,
     default: "Tiền mặt",
-  }
+  },
+  isTrip: {
+    type: Boolean,
+    default: false,
+  },
+  trips: {
+    type: [String],
+  },
 }, { timestamps: true });
 
 UserSchema.statics.findByEmail = async function (email: string) {

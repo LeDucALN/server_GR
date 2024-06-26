@@ -1,5 +1,5 @@
 import { Response, Request } from "express";
-import GuestSchema from "../models/user";
+import UserSchema from "../models/user";
 import DriverSchema from "../models/driver";
 const jwt = require('jsonwebtoken');
 
@@ -25,8 +25,8 @@ const middlewareToken = {
         }
     },
 
-    verifyGuest: (req: RequestWithUser, res: Response, next: any) => {
-        if(req.user.role === "guest"){
+    verifyUser: (req: RequestWithUser, res: Response, next: any) => {
+        if(req.user.role === "user"){
             next();
         }
         else{

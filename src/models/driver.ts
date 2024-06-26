@@ -17,6 +17,17 @@ const DriverSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  isFindTrip: {
+    type: Boolean,
+    default: false,
+  },
+  location: {
+    type: Object,
+  },
+  isTrip: {
+    type: Boolean,
+    default: false,
+  },
   telephone: {
     type: String,
   },
