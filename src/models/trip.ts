@@ -1,5 +1,4 @@
 /** @format */
-
 const mongoose = require("mongoose");
 const TripSchema = new mongoose.Schema(
 	{
@@ -15,6 +14,12 @@ const TripSchema = new mongoose.Schema(
         DS: {
             type: Object,
         },
+		pickupLocation: {
+			type: String,
+		},
+		destinationLocation: {
+			type: String,
+		},
 		driverPosition: {
 			type: Object,
 		},
@@ -30,6 +35,9 @@ const TripSchema = new mongoose.Schema(
         },
 		isArrived: {
 			type: Boolean,
+		},
+		paymentMethod: {
+			type: String,
 		}
 	},
 	{ timestamps: true }

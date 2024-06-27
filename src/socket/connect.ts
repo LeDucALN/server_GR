@@ -51,6 +51,15 @@ const findUSerById = async (id: string) => {
 io.on("connection", async (socket) => {
 	console.log("driver connected", driversConnected);
 
+	socket.on("disconnect", () => {
+		console.log("disconnect to driver socket");
+		if (socket.data.user.role === "driver") {
+			driversConnected = driversConnected.filter(
+				(driver: any) => driver.socketId !== socket.id
+			);
+		}
+	});
+
 	let driver: any;
 	if (socket.data.user.role === "driver") {
 		driver = await DriverSchema.findById(socket.data.user.id);
@@ -78,7 +87,7 @@ io.on("connection", async (socket) => {
 				driverId: socket.data.user.id,
 				isFindTrip: false,
 				location: driver.location,
-			}
+			};
 		}
 		driversConnected.push(driver);
 	}
@@ -103,14 +112,14 @@ io.on("connection", async (socket) => {
 		await DriverSchema.findByIdAndUpdate(driver.driverId, {
 			location: location,
 		});
-		console.log('driversConnected', driversConnected)
+		console.log("driversConnected", driversConnected);
 		//Send driver's current location to user when driver is on trip
 		if (driver.isTrip) {
 			const trip = await TripSchema.findOne({
 				driverId: socket.data.user.id,
 				status: "pending",
 			});
-			console.log(trip)
+			console.log(trip);
 			trip.driverPosition = location;
 			await trip.save();
 			socket
@@ -121,7 +130,7 @@ io.on("connection", async (socket) => {
 
 	//2. Driver is ready to take trip
 	socket.on("isFindingTrip", async () => {
-		console.log('log')
+		console.log("log");
 		driver.isFindTrip = true;
 		await DriverSchema.findByIdAndUpdate(driver.driverId, {
 			isFindTrip: true,
@@ -146,7 +155,7 @@ io.on("connection", async (socket) => {
 	};
 
 	//1. User send request trip
-	socket.on("sendRequest", (pickup, destination, PU, DS) => {
+	socket.on("sendRequest", (pickup, destination, PU, DS, paymentMethod) => {
 		// Tìm tài xế gần nhất trong 10 giây
 		let driverConnect: Driver;
 		let minDistance = Infinity;
@@ -201,6 +210,9 @@ io.on("connection", async (socket) => {
 					driverPosition: driverConnect.location,
 					PU: pickup,
 					DS: destination,
+					pickupLocation: PU,
+					destinationLocation: DS,
+					paymentMethod: paymentMethod,
 					status: "pending",
 					isArrived: false,
 					tripRoom: tripRoom,
@@ -243,7 +255,7 @@ io.on("connection", async (socket) => {
 				searchTimeout: undefined,
 				isCancelled: false,
 			}; // Reset current request
-		}, 10000);
+		}, 5000);
 	});
 
 	// User cancel request trip
@@ -262,7 +274,7 @@ io.on("connection", async (socket) => {
 		}; // Reset current request
 	});
 
-	socket.on("startTrip", async(tripRoom, driverLocation) => {
+	socket.on("startTrip", async (tripRoom, driverLocation) => {
 		const trip = await TripSchema.findOne({ tripRoom });
 		trip.isArrived = true;
 		await trip.save();
@@ -271,8 +283,8 @@ io.on("connection", async (socket) => {
 		});
 	});
 
-	socket.on("completeTrip", async(tripRoom, currentLocation) => {
-		const trip = await TripSchema.findOne({ tripRoom, status: "pending"});
+	socket.on("completeTrip", async (tripRoom, currentLocation) => {
+		const trip = await TripSchema.findOne({ tripRoom, status: "pending" });
 		trip.status = "completed";
 		await trip.save();
 
@@ -290,15 +302,7 @@ io.on("connection", async (socket) => {
 			message: "Sr tài xế đang bận, vui lòng chờ",
 		});
 	});
-
-	socket.on("disconnect", () => {
-		console.log("disconnect to driver socket");
-		if (socket.data.user.role === "driver") {
-			driversConnected = driversConnected.filter(
-				(driver: any) => driver.id !== socket.id
-			);
-		}
-	});
 });
 
 export default io;
+

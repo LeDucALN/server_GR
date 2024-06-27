@@ -1,43 +1,57 @@
+/** @format */
+
 const mongoose = require("mongoose");
 const DriverSchema = new mongoose.Schema({
-  email: {
-    type: String,
-    lowercase: true,
-    required: true,
-  },
-  password: {
-    type: String,
-    minLength: 8,
-    required: true,
-  },
-  image: {
-    type: String,
-  },
-  username: {
-    type: String,
-    required: true,
-  },
-  isFindTrip: {
-    type: Boolean,
-    default: false,
-  },
-  location: {
-    type: Object,
-  },
-  isTrip: {
-    type: Boolean,
-    default: false,
-  },
-  telephone: {
-    type: String,
-  },
-  license: {
-    type: String,
-  },
+	email: {
+		type: String,
+		lowercase: true,
+		required: true,
+	},
+	password: {
+		type: String,
+		minLength: 8,
+		required: true,
+	},
+	image: {
+		type: String,
+	},
+	username: {
+		type: String,
+		required: true,
+	},
+	isFindTrip: {
+		type: Boolean,
+		default: false,
+	},
+	location: {
+		type: Object,
+	},
+	isTrip: {
+		type: Boolean,
+		default: false,
+	},
+	telephone: {
+		type: String,
+	},
+	vehice: {
+		type: String,
+	},
+	typeOfVehicle: {
+		type: String,
+	},
+	seat: {
+		type: Number,
+	},
+	license: {
+		type: String,
+	},
+	brand: {
+		type: String,
+	},
 });
 
 DriverSchema.statics.findByEmail = async function (email: string) {
-  return this.findOne({ email });
+	return this.findOne({ email });
 };
 
 export default mongoose.model("driver", DriverSchema);
