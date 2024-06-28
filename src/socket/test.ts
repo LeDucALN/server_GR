@@ -43,7 +43,7 @@ const findDriverById = async (id: string) => {
 	return driver;
 };
 
-const findUserById = async (id: string) => {
+const findUSerById = async (id: string) => {
 	const user = await UserSchema.findById(id);
 	return user;
 };
@@ -193,11 +193,13 @@ io.on("connection", async (socket) => {
 						.get(driverConnect.socketId)
 						?.join(tripRoom);
 					io.to(driverConnect.socketId).emit("newTripRequest", {
-						guest: (await findUserById(socket.data.user.id)).toJSON(),
-						DSLocation,
-						PULocation,
-						PU: pickup,
-						DS: destination,
+						information: {
+							username: await findUSerById(socket.data.user.id),
+							PULocation: PULocation,
+							DSLocation: DSLocation,
+						},
+						PULocation: pickup,
+						DSLocation: destination,
 						tripRoom: tripRoom,
 					});
 					io.to(socket.id).emit(

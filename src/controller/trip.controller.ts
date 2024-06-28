@@ -42,10 +42,11 @@ const TripController = {
 				status: "pending",
 			});
 			if (!trip) {
-				return res.status(200).json({ message: "Bạn đang không có chuyến đi nào" });
+				const driver = await DriverSchema.findById(id);
+				return res.status(200).json({ message: "Bạn đang không có chuyến đi nào", currentLocation: driver.location });
 			} else {
-				
-				return res.status(200).json(trip);	
+				const guest = await UserSchema.findById(trip.userId)
+				return res.status(200).json({...trip.toJSON(), guest: guest.toJSON()});	
 			}
 		}
 		catch (error) {
