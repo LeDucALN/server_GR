@@ -10,7 +10,7 @@ interface RequestWithUser extends Request {
 }
 
 const TripController = {
-	async getStatusTripUser(req: RequestWithUser, res: Response) {
+	async getStatusTripByUser(req: RequestWithUser, res: Response) {
 		const id = req.user.id;
 		try {
 			const trip = await TripSchema.findOne({
@@ -20,13 +20,37 @@ const TripController = {
 			if (!trip) {
 				return res.status(200).json({ message: "Bạn đang không có chuyến đi nào" });
 			} else {
-				return res.status(200).json(trip);
+				let driverId = trip.driverId;
+				let driver = await DriverSchema.findById(driverId);
+				return res.status(200).json({
+					...trip.toJSON(),
+					driver,
+				});
 			}
 		}
 		catch (error) {
 			return res.status(400).json(error)
 		}
 		
+	},
+
+	async getStatusTripByDriver(req: RequestWithUser, res: Response) {
+		const id = req.user.id;
+		try {
+			const trip = await TripSchema.findOne({
+				driverId: id,
+				status: "pending",
+			});
+			if (!trip) {
+				return res.status(200).json({ message: "Bạn đang không có chuyến đi nào" });
+			} else {
+				
+				return res.status(200).json(trip);	
+			}
+		}
+		catch (error) {
+			return res.status(400).json(error)
+		}
 	},
 
 	async getAllTripByUser(req: RequestWithUser, res: Response) {
@@ -52,7 +76,7 @@ const TripController = {
 				} = driver.toObject();
 				return {
 					...trip.toObject(),
-					driver: { username, license, brand, typeofVehicle, vehice, seat },
+					driver,
 				};
 			})
 		);

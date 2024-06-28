@@ -51,14 +51,7 @@ const findUSerById = async (id: string) => {
 io.on("connection", async (socket) => {
 	console.log("driver connected", driversConnected);
 
-	socket.on("disconnect", () => {
-		console.log("disconnect to driver socket");
-		if (socket.data.user.role === "driver") {
-			driversConnected = driversConnected.filter(
-				(driver: any) => driver.socketId !== socket.id
-			);
-		}
-	});
+	
 
 	let driver: any;
 	if (socket.data.user.role === "driver") {
@@ -130,7 +123,6 @@ io.on("connection", async (socket) => {
 
 	//2. Driver is ready to take trip
 	socket.on("isFindingTrip", async () => {
-		console.log("log");
 		driver.isFindTrip = true;
 		await DriverSchema.findByIdAndUpdate(driver.driverId, {
 			isFindTrip: true,
@@ -155,108 +147,126 @@ io.on("connection", async (socket) => {
 	};
 
 	//1. User send request trip
-	socket.on("sendRequest", (pickup, destination, PU, DS, paymentMethod) => {
-		// Tìm tài xế gần nhất trong 10 giây
-		let driverConnect: Driver;
-		let minDistance = Infinity;
-		currentRequest.isCancelled = false; // Reset cancellation status
+	socket.on(
+		"sendRequest",
+		(
+			pickup,
+			destination,
+			PULocation,
+			DSLocation,
+			pulocation,
+			dslocation,
+			paymentMethod
+		) => {
+			// Tìm tài xế gần nhất trong 10 giây
+			let driverConnect: Driver;
+			let minDistance = Infinity;
+			currentRequest.isCancelled = false; // Reset cancellation status
 
-		//Find driver with min distance
-		const searchDriver = async () => {
-			if (currentRequest.isCancelled) return;
+			//Find driver with min distance
+			const searchDriver = async () => {
+				if (currentRequest.isCancelled) return;
 
-			driversConnected.forEach((driver: Driver) => {
-				//Check driver is ready
-				if (driver.isFindTrip) {
-					const distance = calculate(pickup, driver.location);
-					//Update min distance and driver connect
-					if (distance < minDistance) {
-						minDistance = distance;
-						driverConnect = driver;
+				driversConnected.forEach((driver: Driver) => {
+					//Check driver is ready
+					if (driver.isFindTrip) {
+						const distance = calculate(pickup, driver.location);
+						//Update min distance and driver connect
+						if (distance < minDistance) {
+							minDistance = distance;
+							driverConnect = driver;
+						}
 					}
-				}
-			});
+				});
 
-			if (driverConnect && !currentRequest.isCancelled) {
-				//if driver connect is found
-				const tripRoom = `trip_${socket.data.user.id}_${driverConnect.driverId}`; //create trip room
-				// driverConnect.currentTripRoom = tripRoom;
-				driverConnect.isTrip = true;
-				driverConnect.isFindTrip = false;
-				await DriverSchema.findByIdAndUpdate(driverConnect.driverId, {
-					isTrip: true,
-					isFindTrip: false,
-				});
-				socket.join(tripRoom);
-				io.sockets.sockets.get(driverConnect.socketId)?.join(tripRoom);
-				io.to(driverConnect.socketId).emit("newTripRequest", {
-					information: {
-						username: await findUSerById(socket.data.user.id),
-						pickupAddress: PU,
-						destinationAddress: DS,
-					},
-					PULocation: pickup,
-					DSLocation: destination,
-					tripRoom: tripRoom,
-				});
-				io.to(socket.id).emit(
-					"requestSuccess",
-					await findDriverById(driverConnect.driverId),
-					driverConnect.location
-				);
-				const newTrip = await TripSchema.create({
-					userId: socket.data.user.id,
-					driverId: driverConnect.driverId,
-					driverPosition: driverConnect.location,
-					PU: pickup,
-					DS: destination,
-					pickupLocation: PU,
-					destinationLocation: DS,
-					paymentMethod: paymentMethod,
-					status: "pending",
-					isArrived: false,
-					tripRoom: tripRoom,
-				});
-				const user = await UserSchema.findByIdAndUpdate(
-					socket.data.user.id,
-					{ $push: { trips: newTrip._id } },
-					{ new: true }
-				);
+				if (driverConnect && !currentRequest.isCancelled) {
+					//if driver connect is found
+					const tripRoom = `trip_${socket.data.user.id}_${driverConnect.driverId}`; //create trip room
+					// driverConnect.currentTripRoom = tripRoom;
+					driverConnect.isTrip = true;
+					driverConnect.isFindTrip = false;
+					await DriverSchema.findByIdAndUpdate(
+						driverConnect.driverId,
+						{
+							isTrip: true,
+							isFindTrip: false,
+						}
+					);
+					socket.join(tripRoom);
+					io.sockets.sockets
+						.get(driverConnect.socketId)
+						?.join(tripRoom);
+					io.to(driverConnect.socketId).emit("newTripRequest", {
+						information: {
+							username: await findUSerById(socket.data.user.id),
+							pickupAddress: PULocation,
+							destinationAddress: DSLocation,
+						},
+						PULocation: pickup,
+						DSLocation: destination,
+						tripRoom: tripRoom,
+					});
+					io.to(socket.id).emit(
+						"requestSuccess",
+						await findDriverById(driverConnect.driverId),
+						driverConnect.location
+					);
+					const newTrip = await TripSchema.create({
+						userId: socket.data.user.id,
+						driverId: driverConnect.driverId,
+						driverPosition: driverConnect.location,
+						PU: pickup,
+						DS: destination,
+						PULocation,
+						DSLocation,
+						pulocation: pulocation,
+						dslocation: dslocation,
+						paymentMethod: paymentMethod,
+						status: "pending",
+						isArrived: false,
+						tripRoom: tripRoom,
+					});
+					const user = await UserSchema.findByIdAndUpdate(
+						socket.data.user.id,
+						{ $push: { trips: newTrip._id } },
+						{ new: true }
+					);
+
+					if (currentRequest.searchInterval) {
+						clearInterval(currentRequest.searchInterval);
+					}
+					if (currentRequest.searchTimeout) {
+						clearTimeout(currentRequest.searchTimeout);
+					}
+					currentRequest = {
+						searchInterval: undefined,
+						searchTimeout: undefined,
+						isCancelled: false,
+					}; // Reset current request
+				}
+			};
+
+			currentRequest.searchInterval = setInterval(searchDriver, 1000);
+			currentRequest.searchTimeout = setTimeout(() => {
+				if (currentRequest.isCancelled) return;
 
 				if (currentRequest.searchInterval) {
 					clearInterval(currentRequest.searchInterval);
 				}
-				if (currentRequest.searchTimeout) {
-					clearTimeout(currentRequest.searchTimeout);
+				if (!driverConnect) {
+					io.to(socket.id).emit("requestFail", {
+						message:
+							"Xin lỗi, tất cả các tài xế đều bận. Vui lòng thử lại sau.",
+					});
 				}
 				currentRequest = {
 					searchInterval: undefined,
 					searchTimeout: undefined,
 					isCancelled: false,
 				}; // Reset current request
-			}
-		};
-
-		currentRequest.searchInterval = setInterval(searchDriver, 1000);
-		currentRequest.searchTimeout = setTimeout(() => {
-			if (currentRequest.isCancelled) return;
-
-			if (currentRequest.searchInterval) {
-				clearInterval(currentRequest.searchInterval);
-			}
-			if (!driverConnect) {
-				io.to(socket.id).emit("requestFail", {
-					message:
-						"Xin lỗi, tất cả các tài xế đều bận. Vui lòng thử lại sau.",
-				});
-			}
-			currentRequest = {
-				searchInterval: undefined,
-				searchTimeout: undefined,
-				isCancelled: false,
-			}; // Reset current request
-		}, 5000);
-	});
+			}, 5000000);
+		}
+	);
 
 	// User cancel request trip
 	socket.on("cancelRequest", () => {
@@ -302,7 +312,29 @@ io.on("connection", async (socket) => {
 			message: "Sr tài xế đang bận, vui lòng chờ",
 		});
 	});
+
+	socket.on("disconnect", () => {
+		console.log("disconnect to driver socket");
+		if (socket.data.user.role === "driver") {
+			driversConnected = driversConnected.filter(
+				(driver: any) => driver.socketId !== socket.id
+			);
+		}
+		if (socket.data.user.role === "user") {
+			if (currentRequest.searchInterval) {
+				clearInterval(currentRequest.searchInterval);
+			}
+			if (currentRequest.searchTimeout) {
+				clearTimeout(currentRequest.searchTimeout);
+			}
+			currentRequest.isCancelled = true;
+			currentRequest = {
+				searchInterval: undefined,
+				searchTimeout: undefined,
+				isCancelled: true,
+			};
+		}
+	});
 });
 
 export default io;
-

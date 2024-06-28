@@ -14,10 +14,16 @@ const TripSchema = new mongoose.Schema(
         DS: {
             type: Object,
         },
-		pickupLocation: {
+		PULocation: {
 			type: String,
 		},
-		destinationLocation: {
+		DSLocation: {
+			type: String,
+		},
+		pulocation: {
+			type: String,
+		},
+		dslocation: {
 			type: String,
 		},
 		driverPosition: {
