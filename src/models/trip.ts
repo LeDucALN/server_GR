@@ -44,6 +44,16 @@ const TripSchema = new mongoose.Schema(
 		},
 		paymentMethod: {
 			type: String,
+		},
+		price: {
+			type: Number,
+		},
+		rating: {
+			type: Number,
+			default: 5,
+		},
+		comment: {
+			type: String,
 		}
 	},
 	{ timestamps: true }

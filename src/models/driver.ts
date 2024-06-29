@@ -33,7 +33,7 @@ const DriverSchema = new mongoose.Schema({
 	telephone: {
 		type: String,
 	},
-	vehice: {
+	vehicle: {
 		type: String,
 	},
 	typeOfVehicle: {

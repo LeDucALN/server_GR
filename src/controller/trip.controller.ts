@@ -18,7 +18,9 @@ const TripController = {
 				status: "pending",
 			});
 			if (!trip) {
-				return res.status(200).json({ message: "Bạn đang không có chuyến đi nào" });
+				return res
+					.status(200)
+					.json({ message: "Bạn đang không có chuyến đi nào" });
 			} else {
 				let driverId = trip.driverId;
 				let driver = await DriverSchema.findById(driverId);
@@ -27,11 +29,9 @@ const TripController = {
 					driver,
 				});
 			}
+		} catch (error) {
+			return res.status(400).json(error);
 		}
-		catch (error) {
-			return res.status(400).json(error)
-		}
-		
 	},
 
 	async getStatusTripByDriver(req: RequestWithUser, res: Response) {
@@ -43,14 +43,20 @@ const TripController = {
 			});
 			if (!trip) {
 				const driver = await DriverSchema.findById(id);
-				return res.status(200).json({ message: "Bạn đang không có chuyến đi nào", currentLocation: driver.location });
+				return res
+					.status(200)
+					.json({
+						message: "Bạn đang không có chuyến đi nào",
+						currentLocation: driver.location,
+					});
 			} else {
-				const guest = await UserSchema.findById(trip.userId)
-				return res.status(200).json({...trip.toJSON(), guest: guest.toJSON()});	
+				const guest = await UserSchema.findById(trip.userId);
+				return res
+					.status(200)
+					.json({ ...trip.toJSON(), guest: guest.toJSON() });
 			}
-		}
-		catch (error) {
-			return res.status(400).json(error)
+		} catch (error) {
+			return res.status(400).json(error);
 		}
 	},
 
@@ -72,7 +78,7 @@ const TripController = {
 					brand,
 					typeofVehicle,
 					vehice,
-                    seat,
+					seat,
 					...rest
 				} = driver.toObject();
 				return {
@@ -82,6 +88,21 @@ const TripController = {
 			})
 		);
 		return res.status(200).json(trips);
+	},
+
+	async createCommentForTrip(req: RequestWithUser, res: Response) {
+		console.log(req.body);
+		const { tripId, comment, rating } = req.body;
+		try {
+			const trip = await TripSchema.findById(tripId);
+			trip.comment = comment;
+			trip.rating = rating;
+			await trip.save();
+			return res.status(200).json({...trip.toJSON(), message: "Comment successfully"});
+		}
+		catch(err: any){
+			return res.status(400).json({message: err.message})
+		}
 	},
 };
 

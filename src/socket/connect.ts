@@ -6,7 +6,7 @@ import { calculate } from "../utils";
 import DriverSchema from "../models/driver";
 import UserSchema from "../models/user";
 import TripSchema from "../models/trip";
-import { clear } from "console";
+
 
 const io = new Server({
 	cors: {
@@ -14,12 +14,24 @@ const io = new Server({
 	},
 });
 
+function convertCurrencyToNumber(currencyStr:string) {
+	// Loại bỏ ký tự "đ" và các dấu phẩy
+	const numberStr = currencyStr.replace(/[đ,]/g, '');
+  
+	// Chuyển đổi chuỗi còn lại thành số
+	const number = parseInt(numberStr, 10);
+  
+	return number;
+}
+
 io.use(socketAuth);
 
 interface Driver {
 	socketId: string;
 	driverId: string;
 	isFindTrip: boolean;
+	vehicle: string;
+	seat: number;
 	isTrip: boolean;
 	location: ILocation;
 }
@@ -64,6 +76,8 @@ io.on("connection", async (socket) => {
 				location: driverDB.location,		//vi tri cua driver se la vi tri truoc do cua driver
 				isTrip: false,
 				isFindTrip: false,
+				vehicle: driverDB.vehicle,
+				seat: driverDB.seat,
 			};
 		}
 
@@ -79,6 +93,8 @@ io.on("connection", async (socket) => {
 				isTrip: true,
 				isFindTrip: false,
 				location: tripStatus.driverPosition, //vi tri cua driver se la vi tri cuoi cung duoc cap nhat trong chuyen di
+				vehicle: driverDB.vehicle,
+				seat: driverDB.seat,
 			};
 		}
 		driversConnected.push(driver);
@@ -152,7 +168,8 @@ io.on("connection", async (socket) => {
 			DSLocation,
 			pulocation,
 			dslocation,
-			paymentMethod
+			paymentMethod,
+			traffic
 		) => {
 			// Tìm tài xế gần nhất trong 10 giây
 			let driverConnect: Driver;
@@ -165,7 +182,7 @@ io.on("connection", async (socket) => {
 
 				driversConnected.forEach((driver: Driver) => {
 					//Check driver is ready
-					if (driver.isFindTrip) {
+					if (driver.isFindTrip && driver.vehicle === traffic.name && driver.seat === traffic.quantity) {
 						const distance = calculate(pickup, driver.location);
 						//Update min distance and driver connect
 						if (distance < minDistance) {
@@ -200,11 +217,7 @@ io.on("connection", async (socket) => {
 						DS: destination,
 						tripRoom: tripRoom,
 					});
-					io.to(socket.id).emit(
-						"requestSuccess",
-						await findDriverById(driverConnect.driverId),
-						driverConnect.location
-					);
+					
 					const newTrip = await TripSchema.create({
 						userId: socket.data.user.id,
 						driverId: driverConnect.driverId,
@@ -220,6 +233,14 @@ io.on("connection", async (socket) => {
 						isArrived: false,
 						tripRoom: tripRoom,
 					});
+
+					io.to(socket.id).emit(
+						"requestSuccess",
+						await findDriverById(driverConnect.driverId),
+						driverConnect.location,
+						tripRoom,
+						newTrip._id	
+					);
 					const user = await UserSchema.findByIdAndUpdate(
 						socket.data.user.id,
 						{ $push: { trips: newTrip._id } },
@@ -258,7 +279,7 @@ io.on("connection", async (socket) => {
 					searchTimeout: undefined,
 					isCancelled: false,
 				}; // Reset current request
-			}, 5000000);
+			}, 10000);
 		}
 	);
 
@@ -279,7 +300,7 @@ io.on("connection", async (socket) => {
 	});
 
 	socket.on("startTrip", async (tripRoom, driverLocation) => {
-		const trip = await TripSchema.findOne({ tripRoom });
+		const trip = await TripSchema.findOne({ tripRoom, status: "pending" });
 		trip.isArrived = true;
 		await trip.save();
 		socket.to(tripRoom).emit("driverArrived", {
@@ -301,7 +322,7 @@ io.on("connection", async (socket) => {
 		});
 	});
 
-	socket.on("sendMessageUser", (tripRoom) => {
+	socket.on("sendMessageFromUser", (tripRoom) => {
 		socket.to(tripRoom).emit("receiveMessage", {
 			message: "Sr tài xế đang bận, vui lòng chờ",
 		});
