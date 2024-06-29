@@ -7,7 +7,7 @@ import DriverSchema from "../models/driver";
 import UserSchema from "../models/user";
 import TripSchema from "../models/trip";
 import ChatSchema from "../models/chat";
-
+import { stat } from "fs";
 
 const io = new Server({
 	cors: {
@@ -15,13 +15,13 @@ const io = new Server({
 	},
 });
 
-function convertCurrencyToNumber(currencyStr:string) {
+function convertCurrencyToNumber(currencyStr: string) {
 	// Loại bỏ ký tự "đ" và các dấu phẩy
-	const numberStr = currencyStr.replace(/[đ,]/g, '');
-  
+	const numberStr = currencyStr.replace(/[đ,]/g, "");
+
 	// Chuyển đổi chuỗi còn lại thành số
 	const number = parseInt(numberStr, 10);
-  
+
 	return number;
 }
 
@@ -71,7 +71,7 @@ io.on("connection", async (socket) => {
 			driver = {
 				socketId: socket.id,
 				driverId: socket.data.user.id,
-				location: driverDB.location,		//vi tri cua driver se la vi tri truoc do cua driver
+				location: driverDB.location, //vi tri cua driver se la vi tri truoc do cua driver
 				isTrip: false,
 				isFindTrip: false,
 				vehicle: driverDB.vehicle,
@@ -124,7 +124,7 @@ io.on("connection", async (socket) => {
 				driverId: socket.data.user.id,
 				status: "pending",
 			});
-			trip.driverPosition = location;			//cap nhat vi tri cua driver trong chuyen di
+			trip.driverPosition = location; //cap nhat vi tri cua driver trong chuyen di
 			await trip.save();
 			socket
 				.to(trip.tripRoom) //send to trip room of user and driver
@@ -168,7 +168,7 @@ io.on("connection", async (socket) => {
 			pulocation,
 			dslocation,
 			paymentMethod,
-			traffic
+			traffic		
 		) => {
 			// Tìm tài xế gần nhất trong 10 giây
 			let driverConnect: Driver;
@@ -181,7 +181,11 @@ io.on("connection", async (socket) => {
 
 				driversConnected.forEach((driver: Driver) => {
 					//Check driver is ready
-					if (driver.isFindTrip && driver.vehicle === traffic.name && driver.seat === traffic.quantity) {
+					if (
+						driver.isFindTrip &&
+						driver.vehicle === traffic.name &&
+						driver.seat === traffic.quantity
+					) {
 						const distance = calculate(pickup, driver.location);
 						//Update min distance and driver connect
 						if (distance < minDistance) {
@@ -209,14 +213,16 @@ io.on("connection", async (socket) => {
 						.get(driverConnect.socketId)
 						?.join(tripRoom);
 					io.to(driverConnect.socketId).emit("newTripRequest", {
-						guest: (await findUserById(socket.data.user.id)).toJSON(),
+						guest: (
+							await findUserById(socket.data.user.id)
+						).toJSON(),
 						DSLocation,
 						PULocation,
 						PU: pickup,
 						DS: destination,
 						tripRoom: tripRoom,
 					});
-					
+
 					const newTrip = await TripSchema.create({
 						userId: socket.data.user.id,
 						driverId: driverConnect.driverId,
@@ -231,6 +237,7 @@ io.on("connection", async (socket) => {
 						status: "pending",
 						isArrived: false,
 						tripRoom: tripRoom,
+						price: convertCurrencyToNumber(traffic.price),
 					});
 
 					io.to(socket.id).emit(
@@ -238,8 +245,24 @@ io.on("connection", async (socket) => {
 						await findDriverById(driverConnect.driverId),
 						driverConnect.location,
 						tripRoom,
-						newTrip._id	
+						newTrip._id
 					);
+					const messageDefault = {
+						content:
+							"Chuyến đi của bạn đã được tài xế nhận. Chờ tài xế đến đón bạn nhé!",
+						senderByUser: false,
+						createAt: new Date(),
+					};
+					io.to(socket.id).emit(
+						"receivedMessageFromDriver",
+						messageDefault
+					);
+
+					const chat = await ChatSchema.create({
+						tripId: newTrip._id,
+						messages: [messageDefault],
+					});
+
 					const user = await UserSchema.findByIdAndUpdate(
 						socket.data.user.id,
 						{ $push: { trips: newTrip._id } },
@@ -278,7 +301,7 @@ io.on("connection", async (socket) => {
 					searchTimeout: undefined,
 					isCancelled: false,
 				}; // Reset current request
-			}, 10000);
+			}, 1000000);
 		}
 	);
 
@@ -302,6 +325,15 @@ io.on("connection", async (socket) => {
 		const trip = await TripSchema.findOne({ tripRoom, status: "pending" });
 		trip.isArrived = true;
 		await trip.save();
+		const messageDefault = {
+			content: "Tài xế đã đến nơi đón bạn. Hãy chuẩn bị và lên xe nhé!",
+			senderByUser: false,
+			createAt: new Date(),
+		};
+		socket.to(tripRoom).emit("receivedMessageFromDriver", messageDefault);
+		const chat = await ChatSchema.findOne({ tripId: trip._id});
+		chat.messages.push(messageDefault);
+		await chat.save();
 		socket.to(tripRoom).emit("driverArrived", {
 			driverLocation: driverLocation,
 		});
@@ -321,43 +353,29 @@ io.on("connection", async (socket) => {
 		});
 	});
 
-	socket.on("sendMessageFromUser", async(chat, tripRoom) => {
+	socket.on("sendMessageFromUser", async (chat, tripRoom) => {
 		const message = {
 			content: chat.content,
 			senderByUser: true,
 			createAt: chat.createAt,
-		}
+		};
 		const trip = await TripSchema.findOne({ tripRoom, status: "pending" });
 		const chatDB = await ChatSchema.findOne({ tripId: trip._id });
-		if (!chatDB) {
-			await ChatSchema.create({
-				tripId: trip._id,
-				messages: [message],
-			});
-		} else {
-			chatDB.messages.push(message);
-			await chatDB.save();
-		}
+		chatDB.messages.push(message);
+		await chatDB.save();
 		socket.to(tripRoom).emit("receivedMessageFromUser", message);
 	});
 
-	socket.on("sendMessageFromDriver", async(chat, tripRoom) => {
+	socket.on("sendMessageFromDriver", async (chat, tripRoom) => {
 		const message = {
 			content: chat.content,
 			senderByUser: false,
 			createAt: chat.createAt,
-		}
+		};
 		const trip = await TripSchema.findOne({ tripRoom, status: "pending" });
 		const chatDB = await ChatSchema.findOne({ tripId: trip._id });
-		if (!chatDB) {
-			await ChatSchema.create({
-				tripId: trip._id,
-				messages: [message],
-			});
-		} else {
-			chatDB.messages.push(message);
-			await chatDB.save();
-		}
+		chatDB.messages.push(message);
+		await chatDB.save();
 		socket.to(tripRoom).emit("receivedMessageFromDriver", message);
 	});
 
