@@ -4,6 +4,7 @@ import { Request, Response } from "express";
 import UserSchema from "../models/user";
 import TripSchema from "../models/trip";
 import DriverSchema from "../models/driver";
+import ChatSchema from "../models/chat";
 
 interface RequestWithUser extends Request {
 	user: any;
@@ -23,10 +24,12 @@ const TripController = {
 					.json({ message: "Bạn đang không có chuyến đi nào" });
 			} else {
 				let driverId = trip.driverId;
+				const chat = await ChatSchema.findOne({ tripId: trip._id });
 				let driver = await DriverSchema.findById(driverId);
 				return res.status(200).json({
 					...trip.toJSON(),
 					driver,
+					chat: chat ? chat.messages : [],
 				});
 			}
 		} catch (error) {
@@ -51,9 +54,10 @@ const TripController = {
 					});
 			} else {
 				const guest = await UserSchema.findById(trip.userId);
+				const chat = await ChatSchema.findOne({ tripId: trip._id });
 				return res
 					.status(200)
-					.json({ ...trip.toJSON(), guest: guest.toJSON() });
+					.json({ ...trip.toJSON(), guest: guest.toJSON(), chat: chat ? chat.messages : []});
 			}
 		} catch (error) {
 			return res.status(400).json(error);

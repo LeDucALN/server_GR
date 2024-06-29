@@ -5,7 +5,7 @@ const ChatSchema = new mongoose.Schema(
 		tripId: {
             type: String,
         },
-        message: {
+        messages: {
             type: [Object]
         }
 	},

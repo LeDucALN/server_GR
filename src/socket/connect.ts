@@ -6,6 +6,7 @@ import { calculate } from "../utils";
 import DriverSchema from "../models/driver";
 import UserSchema from "../models/user";
 import TripSchema from "../models/trip";
+import ChatSchema from "../models/chat";
 
 
 const io = new Server({
@@ -62,9 +63,6 @@ const findUserById = async (id: string) => {
 
 io.on("connection", async (socket) => {
 	console.log("driver connected", driversConnected);
-
-	
-
 	let driver: any;
 	if (socket.data.user.role === "driver") {
 		const driverDB = await DriverSchema.findById(socket.data.user.id);
@@ -96,6 +94,7 @@ io.on("connection", async (socket) => {
 				vehicle: driverDB.vehicle,
 				seat: driverDB.seat,
 			};
+			socket.join(tripStatus.tripRoom);
 		}
 		driversConnected.push(driver);
 	}
@@ -322,10 +321,44 @@ io.on("connection", async (socket) => {
 		});
 	});
 
-	socket.on("sendMessageFromUser", (tripRoom) => {
-		socket.to(tripRoom).emit("receiveMessage", {
-			message: "Sr tài xế đang bận, vui lòng chờ",
-		});
+	socket.on("sendMessageFromUser", async(chat, tripRoom) => {
+		const message = {
+			content: chat.content,
+			senderByUser: true,
+			createAt: chat.createAt,
+		}
+		const trip = await TripSchema.findOne({ tripRoom, status: "pending" });
+		const chatDB = await ChatSchema.findOne({ tripId: trip._id });
+		if (!chatDB) {
+			await ChatSchema.create({
+				tripId: trip._id,
+				messages: [message],
+			});
+		} else {
+			chatDB.messages.push(message);
+			await chatDB.save();
+		}
+		socket.to(tripRoom).emit("receivedMessageFromUser", message);
+	});
+
+	socket.on("sendMessageFromDriver", async(chat, tripRoom) => {
+		const message = {
+			content: chat.content,
+			senderByUser: false,
+			createAt: chat.createAt,
+		}
+		const trip = await TripSchema.findOne({ tripRoom, status: "pending" });
+		const chatDB = await ChatSchema.findOne({ tripId: trip._id });
+		if (!chatDB) {
+			await ChatSchema.create({
+				tripId: trip._id,
+				messages: [message],
+			});
+		} else {
+			chatDB.messages.push(message);
+			await chatDB.save();
+		}
+		socket.to(tripRoom).emit("receivedMessageFromDriver", message);
 	});
 
 	socket.on("disconnect", () => {
