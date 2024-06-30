@@ -8,6 +8,7 @@ import UserSchema from "../models/user";
 import TripSchema from "../models/trip";
 import ChatSchema from "../models/chat";
 import { stat } from "fs";
+import { create } from "domain";
 
 const io = new Server({
 	cors: {
@@ -168,7 +169,7 @@ io.on("connection", async (socket) => {
 			pulocation,
 			dslocation,
 			paymentMethod,
-			traffic		
+			traffic
 		) => {
 			// Tìm tài xế gần nhất trong 10 giây
 			let driverConnect: Driver;
@@ -212,16 +213,6 @@ io.on("connection", async (socket) => {
 					io.sockets.sockets
 						.get(driverConnect.socketId)
 						?.join(tripRoom);
-					io.to(driverConnect.socketId).emit("newTripRequest", {
-						guest: (
-							await findUserById(socket.data.user.id)
-						).toJSON(),
-						DSLocation,
-						PULocation,
-						PU: pickup,
-						DS: destination,
-						tripRoom: tripRoom,
-					});
 
 					const newTrip = await TripSchema.create({
 						userId: socket.data.user.id,
@@ -238,6 +229,31 @@ io.on("connection", async (socket) => {
 						isArrived: false,
 						tripRoom: tripRoom,
 						price: convertCurrencyToNumber(traffic.price),
+					});
+
+					const PICKUP = {
+						PU_NAME_DETAIL: PULocation,
+						PU_NAME_SORT: pulocation,
+						PU_LOCATE: pickup,
+					};
+					const DESTINATION = {
+						DS_NAME_DETAIL: DSLocation,
+						DS_NAME_SORT: dslocation,
+						DS_LOCATE: destination,
+					};
+					io.to(driverConnect.socketId).emit("newTripRequest", {
+						TRIP_DETAIL: {
+							_id: newTrip._id,
+							PICKUP,
+							DESTINATION,
+							PRICE: newTrip.price,
+							PAYMENT_METHOD: newTrip.paymentMethod,
+							USER: (
+								await findUserById(socket.data.user.id)
+							).toJSON(),
+							createdAt: newTrip.createdAt,
+						},
+						tripRoom: tripRoom,
 					});
 
 					io.to(socket.id).emit(
@@ -301,7 +317,7 @@ io.on("connection", async (socket) => {
 					searchTimeout: undefined,
 					isCancelled: false,
 				}; // Reset current request
-			}, 1000000);
+			}, 10000);
 		}
 	);
 
@@ -331,7 +347,7 @@ io.on("connection", async (socket) => {
 			createAt: new Date(),
 		};
 		socket.to(tripRoom).emit("receivedMessageFromDriver", messageDefault);
-		const chat = await ChatSchema.findOne({ tripId: trip._id});
+		const chat = await ChatSchema.findOne({ tripId: trip._id });
 		chat.messages.push(messageDefault);
 		await chat.save();
 		socket.to(tripRoom).emit("driverArrived", {

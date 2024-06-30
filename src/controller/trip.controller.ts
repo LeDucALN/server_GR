@@ -5,6 +5,7 @@ import UserSchema from "../models/user";
 import TripSchema from "../models/trip";
 import DriverSchema from "../models/driver";
 import ChatSchema from "../models/chat";
+import { create } from "domain";
 
 interface RequestWithUser extends Request {
 	user: any;
@@ -55,9 +56,26 @@ const TripController = {
 			} else {
 				const guest = await UserSchema.findById(trip.userId);
 				const chat = await ChatSchema.findOne({ tripId: trip._id });
+				const TRIP_DETAIL = {
+					_id: trip._id,
+					PICKUP: {
+						PU_NAME_DETAIL: trip.PULocation,
+						PU_NAME_SORT: trip.pulocation,
+						PU_LOCATE: trip.PU,
+					},
+					DESTINATION: {
+						DS_NAME_DETAIL: trip.DSLocation,
+						DS_NAME_SORT: trip.dslocation,
+						DS_LOCATE: trip.DS,
+					},
+					PRICE: trip.price,
+					STATUS: trip.status,
+					createdAt: trip.createdAt,
+					USER: guest.toJSON(),
+				}
 				return res
 					.status(200)
-					.json({ ...trip.toJSON(), guest: guest.toJSON(), chat: chat ? chat.messages : []});
+					.json({chat: chat ? chat.messages : [], TRIP_DETAIL}, );
 			}
 		} catch (error) {
 			return res.status(400).json(error);
