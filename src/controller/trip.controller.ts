@@ -68,6 +68,7 @@ const TripController = {
 						DS_NAME_SORT: trip.dslocation,
 						DS_LOCATE: trip.DS,
 					},
+					
 					PRICE: trip.price,
 					STATUS: trip.status,
 					createdAt: trip.createdAt,
@@ -75,7 +76,7 @@ const TripController = {
 				}
 				return res
 					.status(200)
-					.json({chat: chat ? chat.messages : [], TRIP_DETAIL}, );
+					.json({chat: chat ? chat.messages : [], TRIP_DETAIL, driverPosition: trip.driverPosition, tripRoom: trip.tripRoom} );
 			}
 		} catch (error) {
 			return res.status(400).json(error);
@@ -113,7 +114,6 @@ const TripController = {
 	},
 
 	async createCommentForTrip(req: RequestWithUser, res: Response) {
-		console.log(req.body);
 		const { tripId, comment, rating } = req.body;
 		try {
 			const trip = await TripSchema.findById(tripId);
