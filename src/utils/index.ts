@@ -24,4 +24,14 @@ const calculate = (origin: any, destination: any) => {
 	return EARTH_R * c; // in metres
 };
 
-export { calculate };
+function convertCurrencyToNumber(currencyStr: string) {
+	// Loại bỏ ký tự "đ" và các dấu phẩy
+	const numberStr = currencyStr.replace(/[đ,]/g, "");
+
+	// Chuyển đổi chuỗi còn lại thành số
+	const number = parseInt(numberStr, 10);
+
+	return number;
+}
+
+export { calculate, convertCurrencyToNumber };

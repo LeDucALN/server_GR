@@ -2,7 +2,7 @@
 
 import { Server } from "socket.io";
 import { socketAuth } from "../middleware/socketAuth";
-import { calculate } from "../utils";
+import { calculate, convertCurrencyToNumber } from "../utils";
 import DriverSchema from "../models/driver";
 import UserSchema from "../models/user";
 import TripSchema from "../models/trip";
@@ -16,15 +16,7 @@ const io = new Server({
 	},
 });
 
-function convertCurrencyToNumber(currencyStr: string) {
-	// Loại bỏ ký tự "đ" và các dấu phẩy
-	const numberStr = currencyStr.replace(/[đ,]/g, "");
 
-	// Chuyển đổi chuỗi còn lại thành số
-	const number = parseInt(numberStr, 10);
-
-	return number;
-}
 
 io.use(socketAuth);
 
