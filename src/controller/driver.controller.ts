@@ -22,7 +22,13 @@ const DriverController = {
 		(id, req.body, { new: true });
 		const { password, ...info } = driver.toObject();
 		res.status(200).json(info);
-	}
+	},
+
+
+	async getAllDriverByAdmin (req: Request, res: Response) {
+		const drivers = await DriverSchema.find().sort({isActive: 1});
+		res.status(200).json(drivers);
+	},
 };
 
 export default DriverController;

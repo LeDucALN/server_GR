@@ -41,6 +41,15 @@ const middlewareToken = {
         else{
             return res.status(403).json("You are not authorized!");
         }
+    },
+
+    verifyAdmin: (req: RequestWithUser, res: Response, next: any) => {
+        if (req.user.role === "admin") {
+            next();
+        }
+        else {
+            return res.status(403).json("You are not authorized!");
+        }
     }
 
 }

@@ -48,6 +48,16 @@ const DriverSchema = new mongoose.Schema({
 	brand: {
 		type: String,
 	},
+	address: {
+		type: String,
+	},
+	ratingAvg: {
+		type: Number,
+	},
+	status: {
+		type: String,
+		default: "pending",
+	},
 });
 
 DriverSchema.statics.findByEmail = async function (email: string) {

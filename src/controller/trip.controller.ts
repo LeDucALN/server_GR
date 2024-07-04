@@ -76,7 +76,7 @@ const TripController = {
 				}
 				return res
 					.status(200)
-					.json({chat: chat ? chat.messages : [], TRIP_DETAIL, driverPosition: trip.driverPosition, tripRoom: trip.tripRoom} );
+					.json({chat: chat ? chat.messages : [], TRIP_DETAIL, driverPosition: trip.driverPosition, tripRoom: trip.tripRoom, isArrived: trip.isArrived} );
 			}
 		} catch (error) {
 			return res.status(400).json(error);
@@ -96,17 +96,37 @@ const TripController = {
 			trips.map(async (trip: any) => {
 				const driver = await DriverSchema.findById(trip.driverId);
 				const {
-					username,
-					license,
-					brand,
-					typeofVehicle,
-					vehice,
-					seat,
+					password,
 					...rest
 				} = driver.toObject();
 				return {
 					...trip.toObject(),
-					driver,
+					driver: rest,
+				};
+			})
+		);
+		return res.status(200).json(trips);
+	},
+
+	async getAllTripByDriver(req: RequestWithUser, res: Response) {
+		const id = req.user.id;
+		let trips = await TripSchema.find({ driverId: id });
+		if (!trips) {
+			return res
+				.status(200)
+				.json({ message: "You don't have any trips yet" });
+		}
+
+		trips = await Promise.all(
+			trips.map(async (trip: any) => {
+				const user = await UserSchema.findById(trip.userId);
+				const {
+					password,
+					...rest
+				} = user.toObject();
+				return {
+					...trip.toObject(),
+					guest: rest,
 				};
 			})
 		);

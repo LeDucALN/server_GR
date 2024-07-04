@@ -73,7 +73,10 @@ const AuthController = {
 					.status(400)
 					.json({ message: "Invalid password" });
 			}
-			if (driver && validPassword) {
+			if (validPassword) {
+				if(driver.isActive === false){
+					return res.status(400).json({message: "Your account has been blocked by the admin"})
+				}
 				const accessToken = AuthController.accessToken(driver, "driver");
 				const { password, ...rest } = driver.toObject();
 				const message = "login success";
@@ -107,6 +110,24 @@ const AuthController = {
 		} catch (err) {
 			res.status(500).json({ message: err });
 		}
+	},
+
+	async adminSignin(req: Request, res: Response) {
+		try {
+			const { account, password } = req.body;
+			if (account === "admin" && password ===  "123456"){
+				const accessToken = jwt.sign({ id: "admin", role: "admin" }, process.env.ACCESS_TOKEN_SECRET!, {
+					expiresIn: "1d",
+				});
+				return res.status(200).json({ accessToken });
+			}
+		} catch (err) {
+			return res.status(500).json({ message: err });
+		}
+	},
+
+	async isLoginAdmin(req: Request, res: Response) {
+		return res.status(200).json({ message: "Admin is login", isLogin: true});
 	},
 
 	accessToken(user: Document, role: string) {

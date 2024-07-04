@@ -5,5 +5,6 @@ const route = Router();
 
 route.get("/getInfoMe", middlewareToken.verifyToken as any, middlewareToken.verifyDriver as any,  DriverController.getInfoMe as any);
 route.put("/updateInfo", middlewareToken.verifyToken as any, middlewareToken.verifyUser as any,  DriverController.updateInfo);
+route.get("/getAllDriverByAdmin", middlewareToken.verifyToken as any, middlewareToken.verifyAdmin as any,  DriverController.getAllDriverByAdmin);
 
 export default route;
