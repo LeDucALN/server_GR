@@ -140,6 +140,12 @@ const TripController = {
 			trip.comment = comment;
 			trip.rating = rating;
 			await trip.save();
+			let driver = await DriverSchema.findById(trip.driverId);
+			let ratingAvg = driver.ratingAvg || 0; 
+			let trips = await TripSchema.find({ driverId: trip.driverId, rating: { $exists: true }, })
+			ratingAvg = trips.reduce((acc: any, cur: any) => acc + cur.rating, 0) / trips.length;
+			driver.ratingAvg = ratingAvg;
+			await driver.save();
 			return res.status(200).json({...trip.toJSON(), message: "Comment successfully"});
 		}
 		catch(err: any){

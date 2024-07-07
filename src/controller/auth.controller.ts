@@ -14,14 +14,14 @@ const AuthController = {
 			const { email, password } = req.body;
 			const user = await UserSchema.findByEmail(email);
 			if (!user) {
-				return res.status(400).json({ message: "User not found" });
+				return res.status(400).json({ message: "Không tìm thấy tài khoản, vui lòng kiểm tra lại" });
 			}
 			else {
 				const validPassword = await bcrypt.compare(password, user.password);
 				if (!validPassword) {
 					return res
 						.status(400)
-						.json({ message: "Invalid password" });
+						.json({ message: "Mật khẩu của bạn không đúng, xin thử lại" });
 				}
 				else {
 					const accessToken = AuthController.accessToken(user, "user");
@@ -42,7 +42,7 @@ const AuthController = {
 			if (user) {
 				return res
 					.status(409)
-					.json({ message: "Email already exists" });
+					.json({ message: "Email đã tồn tại, vui lòng thử lại Email khác" });
 				return;
 			}
 			const salt = await bcrypt.genSalt(10);
@@ -65,17 +65,20 @@ const AuthController = {
 			const { email, password } = req.body;
 			const driver = await DriverSchema.findByEmail(email);
 			if (!driver) {
-				return res.status(400).json({ message: "User not found" });
+				return res.status(400).json({ message: "Không tìm thấy tài khoản, vui lòng kiểm tra lại!" });
 			}
 			const validPassword = await bcrypt.compare(password, driver.password);
 			if (!validPassword) {
 				return res
 					.status(400)
-					.json({ message: "Invalid password" });
+					.json({ message: "Mật khẩu của bạn không đúng, xin thử lại!" });
 			}
 			if (validPassword) {
-				if(driver.isActive === false){
-					return res.status(400).json({message: "Your account has been blocked by the admin"})
+				if(driver.status === 'pending'){
+					return res.status(400).json({message: "Tài khoản của bạn đang chờ admin phê duyệt, vui lòng chờ thêm nhé!"})
+				}
+				if(driver.status === 'block'){
+					return res.status(400).json({message: "Tài khoản của bạn đã bị khóa, vui lòng liên hệ admin để biết thêm chi tiết!"})
 				}
 				const accessToken = AuthController.accessToken(driver, "driver");
 				const { password, ...rest } = driver.toObject();
@@ -89,24 +92,30 @@ const AuthController = {
 
 	async driverSignup(req: Request, res: Response) {
 		try {
-			const { username, email, password } = req.body;
+			const { username, email, password, telephone, gender, vehicle, brand, seat, typeofVehicle, license } = req.body;
 			const driver = await DriverSchema.findByEmail(email);
 			if (driver) {
 				return res
 					.status(409)
 					.json({ message: "Email already exists" });
-				return;
 			}
 			const salt = await bcrypt.genSalt(10);
 			const hashedPassword = await bcrypt.hash(password, salt);
+			const convertVehicle = vehicle === "Ô tô" ? "Car" : "Bike";
 			const newDriver = await DriverSchema.create({
-				username: username,
-				email: email,
+				username,
+				email,
 				password: hashedPassword,
+				telephone,
+				gender,
+				vehicle: convertVehicle,
+				brand,
+				seat,
+				typeofVehicle,
+				license
 			});
-			const { password: string, ...rest } = newDriver.toObject();
-			const message = "Signup success";
-			return res.status(200).json({ rest, message });
+			const message = "Đã gửi yêu cầu đăng ký tài khoản, bạn vui lòng chờ admin phê duyệt nhé";
+			return res.status(200).json({ message });
 		} catch (err) {
 			res.status(500).json({ message: err });
 		}

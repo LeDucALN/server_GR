@@ -50,6 +50,7 @@ const DriverSchema = new mongoose.Schema({
 	},
 	address: {
 		type: String,
+		default: "Hà Nội",
 	},
 	ratingAvg: {
 		type: Number,
@@ -58,6 +59,9 @@ const DriverSchema = new mongoose.Schema({
 		type: String,
 		default: "pending",
 	},
+	gender: {
+		type: String,
+	}
 });
 
 DriverSchema.statics.findByEmail = async function (email: string) {

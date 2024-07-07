@@ -50,7 +50,6 @@ const TripSchema = new mongoose.Schema(
 		},
 		rating: {
 			type: Number,
-			default: 5,
 		},
 		comment: {
 			type: String,
