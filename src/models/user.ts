@@ -23,6 +23,12 @@ const UserSchema = new mongoose.Schema({
     require: true,
     default: "Tiền mặt",
   },
+  gender: {
+    type: String
+  },
+  image: {
+    type: String,
+  },
   isTrip: {
     type: Boolean,
     default: false,

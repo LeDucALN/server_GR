@@ -37,7 +37,7 @@ const AuthController = {
 
 	async UserSignup(req: Request, res: Response) {
 		try {
-			const { username, email, password } = req.body;
+			const { username, email, password, gender, image, phoneNumber } = req.body;
 			const user = await UserSchema.findByEmail(email);
 			if (user) {
 				return res
@@ -48,12 +48,15 @@ const AuthController = {
 			const salt = await bcrypt.genSalt(10);
 			const hashedPassword = await bcrypt.hash(password, salt);
 			const newUser = await UserSchema.create({
-				username: username,
-				email: email,
+				username,
+				email,
 				password: hashedPassword,
+				phoneNumber,
+				gender,
+				image
 			});
 			const { password: string, ...rest } = newUser.toObject();
-			const message = "Signup success";
+			const message = "Đăng ký tài khoản thành công";
 			return res.status(200).json({ rest, message });
 		} catch (err) {
 			res.status(500).json({ message: err });
@@ -83,7 +86,7 @@ const AuthController = {
 				const accessToken = AuthController.accessToken(driver, "driver");
 				const { password, ...rest } = driver.toObject();
 				const message = "login success";
-				return res.status(200).json({ rest, accessToken, message });
+				return res.status(200).json({ ...rest, accessToken, message });
 			}
 		} catch (err) {
 			return res.status(500).json({ message: err });
@@ -92,12 +95,12 @@ const AuthController = {
 
 	async driverSignup(req: Request, res: Response) {
 		try {
-			const { username, email, password, telephone, gender, vehicle, brand, seat, typeofVehicle, license } = req.body;
+			const { username, email, password, telephone, gender, vehicle, brand, seat, typeofVehicle, license, image } = req.body;
 			const driver = await DriverSchema.findByEmail(email);
 			if (driver) {
 				return res
-					.status(409)
-					.json({ message: "Email already exists" });
+					.status(400)
+					.json({ message: "Email đã tồn tại, vui lòng thử lại Email khác" });
 			}
 			const salt = await bcrypt.genSalt(10);
 			const hashedPassword = await bcrypt.hash(password, salt);
@@ -112,7 +115,8 @@ const AuthController = {
 				brand,
 				seat,
 				typeofVehicle,
-				license
+				license,
+				image
 			});
 			const message = "Đã gửi yêu cầu đăng ký tài khoản, bạn vui lòng chờ admin phê duyệt nhé";
 			return res.status(200).json({ message });

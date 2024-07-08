@@ -7,8 +7,6 @@ import DriverSchema from "../models/driver";
 import UserSchema from "../models/user";
 import TripSchema from "../models/trip";
 import ChatSchema from "../models/chat";
-import { stat } from "fs";
-import { create } from "domain";
 
 const io = new Server({
 	cors: {
@@ -308,7 +306,7 @@ io.on("connection", async (socket) => {
 					searchInterval: undefined,
 					searchTimeout: undefined,
 					isCancelled: false,
-				}; // Reset current request
+				}; // 
 			}, 10000);
 		}
 	);

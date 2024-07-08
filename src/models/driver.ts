@@ -36,7 +36,7 @@ const DriverSchema = new mongoose.Schema({
 	vehicle: {
 		type: String,
 	},
-	typeOfVehicle: {
+	typeofVehicle: {
 		type: String,
 	},
 	seat: {

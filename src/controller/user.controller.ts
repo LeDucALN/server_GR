@@ -18,9 +18,9 @@ const UserController = {
 
 	async updateInfo(req: RequestWithUser, res: Response) {
 		const id = req.user.id;
-		const guest = await UserSchema.findByIdAndUpdate
+		const user = await UserSchema.findByIdAndUpdate
 			(id, req.body, { new: true });
-		const { password, ...info } = guest.toObject();
+		const { password, ...info } = user.toObject();
 		res.status(200).json(info);
 	},
 
